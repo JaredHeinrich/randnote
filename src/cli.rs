@@ -2,7 +2,7 @@ use clap::Subcommand as ClapSubcommand;
 use clap::{Args, Parser, ValueEnum};
 
 #[derive(Parser)]
-#[command(version = "0.1.0")]
+#[command(version)]
 #[command(name = "rn")]
 #[command(about = "CLI notes manager")]
 #[command(disable_help_subcommand = true)]
