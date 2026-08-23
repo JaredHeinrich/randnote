@@ -1,6 +1,6 @@
 # rn - randnote /ʁantnoʊt/
 
-[![CICD](https://github.com/JaredHeinrich/randnote/actions/workflows/rust_checks.yml/badge.svg)](https://github.com/JaredHeinrich/randnote/actions/workflows/rust_checks.yml)
+[![CICD](https://github.com/JaredHeinrich/randnote/actions/workflows/ci.yml/badge.svg)](https://github.com/JaredHeinrich/randnote/actions/workflows/ci.yml)
 [![Version info](https://img.shields.io/crates/v/randnote.svg)](https://crates.io/crates/randnote)
 
 `rn` is a tool that helps with managing plaintext note files.
