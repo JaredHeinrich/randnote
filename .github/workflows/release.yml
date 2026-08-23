@@ -112,7 +112,7 @@ jobs:
       shell: bash
       run: |
         ${{ env.CARGO }} build --verbose --profile release ${{ env.TARGET_FLAGS }}
-        echo "BIN=target/${{ matrix.target }}/release/genyii" >> $GITHUB_ENV
+        echo "BIN=target/${{ matrix.target }}/release/rn" >> $GITHUB_ENV
 
     - name: Strip release binary (macos)
       if: matrix.os == 'macos-latest'
