@@ -5,4 +5,4 @@ Since each entry is now called a note the sum of all notes is the notebook.
 
 Improve error handling in `file_operations.rs`.
 
-Handle some open edge cases with errors instead of panicing.
+Handle some open edge cases with errors instead of panicking.
