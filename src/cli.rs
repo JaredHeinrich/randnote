@@ -28,6 +28,9 @@ pub enum Subcommand {
     #[clap(visible_alias = "ls")]
     List,
 
+    #[command(about = "Rename a note")]
+    Rename(RenameArgs),
+
     #[command(about = "Access config via cli")]
     Config(ConfigArgs),
 
@@ -61,7 +64,16 @@ pub struct RemoveArgs {
     pub name: String,
 }
 
-#[derive(Args)]
+#[derive(Args, Debug)]
+pub struct RenameArgs {
+    #[arg(help = "Name of the note to rename")]
+    pub name: String,
+
+    #[arg(help = "New name of the note")]
+    pub new_name: String,
+}
+
+#[derive(Args, Debug)]
 pub struct ConfigArgs {
     #[command(subcommand)]
     pub subcommand: ConfigSubcommand,
