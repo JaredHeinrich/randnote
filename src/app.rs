@@ -266,6 +266,7 @@ impl<FS: FileOperations> App<FS> {
             cli::Subcommand::List => self.handle_list(),
             cli::Subcommand::Completions(args) => self.handle_completions(args),
             cli::Subcommand::Config(args) => self.handle_config(args),
+            cli::Subcommand::Rename(_) => todo!("Not implemented yet"),
             cli::Subcommand::Archive(args) => self.handle_archive(args),
         }
     }
