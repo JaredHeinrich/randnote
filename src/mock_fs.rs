@@ -114,4 +114,8 @@ impl FileOperations for MockFileSystem {
     fn copy(&mut self, _source_path: &Path, _destination_path: &Path) -> Result<()> {
         Err(anyhow!("Can't copy files in mock file system"))
     }
+
+    fn rename(&mut self, _source_path: &Path, _destination_path: &Path) -> Result<()> {
+        Err(anyhow!("Can't rename files in mock file system"))
+    }
 }

@@ -191,6 +191,21 @@ impl<FS: FileOperations> App<FS> {
         ))
     }
 
+    fn handle_rename(&mut self, args: cli::RenameArgs) -> Result<Message> {
+        let name = args.name;
+        let path = self.get_note_path(&name, NoteType::Active);
+        let new_name = args.new_name;
+        let new_path = self.get_note_path(&new_name, NoteType::Active);
+        if !self.fs.exists(&path)? {
+            return Err(AppError::NotFound(name).into());
+        }
+        if !args.force && self.fs.exists(&new_path)? {
+            return Err(AppError::RenameAlreadyExists(new_name).into());
+        }
+        self.fs.rename(&path, &new_path)?;
+        Ok(Message::Renamed((name, new_name)))
+    }
+
     fn handle_archive(&mut self, args: cli::ArchiveArgs) -> Result<Message> {
         match args.subcommand {
             cli::ArchiveSubcommand::Save(args) => self.handle_archive_save(args),
@@ -213,8 +228,7 @@ impl<FS: FileOperations> App<FS> {
         if self.fs.exists(&archived_path)? {
             return Err(AppError::ArchiveAlreadyExists(archived_name).into());
         }
-        self.fs.copy(&active_path, &archived_path)?;
-        self.fs.delete_file(&active_path)?;
+        self.fs.rename(&active_path, &archived_path)?;
         Ok(Message::ArchivedNote((name, archived_name)))
     }
 
@@ -264,9 +278,9 @@ impl<FS: FileOperations> App<FS> {
             cli::Subcommand::Open(args) => self.handle_open(args),
             cli::Subcommand::Remove(args) => self.handle_remove(args),
             cli::Subcommand::List => self.handle_list(),
+            cli::Subcommand::Rename(args) => self.handle_rename(args),
             cli::Subcommand::Completions(args) => self.handle_completions(args),
             cli::Subcommand::Config(args) => self.handle_config(args),
-            cli::Subcommand::Rename(_) => todo!("Not implemented yet"),
             cli::Subcommand::Archive(args) => self.handle_archive(args),
         }
     }

@@ -8,6 +8,7 @@ pub enum AppError {
     AlreadyExists(String),
     NotFound(String),
     ConfigAlreadyExists(PathBuf),
+    RenameAlreadyExists(String),
     RestoreAlreadyExists(String),
     ArchiveAlreadyExists(String),
 }
@@ -19,6 +20,10 @@ impl Display for AppError {
             Self::ConfigAlreadyExists(path) => {
                 writeln!(f, "A config file already exists {}.", path.display())?;
                 writeln!(f, "To overwrite it with the default use `--force`.")
+            }
+            Self::RenameAlreadyExists(name) => {
+                writeln!(f, "A note named \"{name}\" already exists.")?;
+                writeln!(f, "To overwrite it use `--force`.")
             }
             Self::RestoreAlreadyExists(name) => {
                 writeln!(

@@ -9,6 +9,7 @@ pub enum Message {
     CompletionScript(String),
     ConfigValues(Vec<(String, String)>),
     GeneratedConfig(PathBuf),
+    Renamed((String, String)),
     ArchivedNote((String, String)),
     RestoredNote((String, String)),
     Empty,
@@ -41,12 +42,11 @@ impl Display for Message {
                 Ok(())
             }
             Self::GeneratedConfig(path) => writeln!(f, "Generated config file {}", path.display()),
-            Self::ArchivedNote((original_name, archived_name)) => {
-                writeln!(f, "Archived note {original_name} to {archived_name}")
+            Self::Renamed((original, new)) => writeln!(f, "Renamed note {original} to {new}"),
+            Self::ArchivedNote((original, archived)) => {
+                writeln!(f, "Archived note {original} to {archived}")
             }
-            Self::RestoredNote((archived_name, new_name)) => {
-                writeln!(f, "Restored note {archived_name} to {new_name}")
-            }
+            Self::RestoredNote((archived, new)) => writeln!(f, "Restored note {archived} to {new}"),
             Self::Empty => Ok(()),
         }
     }
