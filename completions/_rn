@@ -41,6 +41,13 @@ _rn() {
             ':name -- Name of the note to be deleted:_notebook' \
             && ret=0
           ;;
+        (rename)
+          _arguments \
+            ':name -- Name of the note to rename:_notebook' \
+            ':new_name -- New name of the note:' \
+             '(-f --force)'{-f,--force}'[Overwrite the config file if one already exists]' \
+            && ret=0
+          ;;
         (list)
           ret=0
           ;;
@@ -72,6 +79,7 @@ _rn() {
       "open:Open a note"
       "remove:Delete a note"
       "list:List existing notes"
+      "rename:Rename a note"
       "config:Access config via cli"
       "completions:Completion script for specific shell"
       "archive:View and manage archive"

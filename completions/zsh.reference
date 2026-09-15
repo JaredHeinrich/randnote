@@ -70,6 +70,16 @@ _arguments "${_arguments_options[@]}" : \
 '--help[Print help]' \
 && ret=0
 ;;
+(rename)
+_arguments "${_arguments_options[@]}" : \
+'-f[Overwrite the note, if <NEW_NAME> is already taken]' \
+'--force[Overwrite the note, if <NEW_NAME> is already taken]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Name of the note to rename:_default' \
+':new_name -- New name of the note:_default' \
+&& ret=0
+;;
 (config)
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
@@ -206,6 +216,7 @@ _rn_commands() {
 'rm:Delete a note' \
 'list:List existing notes' \
 'ls:List existing notes' \
+'rename:Rename a note' \
 'config:Access config via cli' \
 'completions:Completion script for specific shell' \
 'archive:View and manage archive' \
@@ -299,6 +310,11 @@ _rn__open_commands() {
 _rn__remove_commands() {
     local commands; commands=()
     _describe -t commands 'rn remove commands' commands "$@"
+}
+(( $+functions[_rn__rename_commands] )) ||
+_rn__rename_commands() {
+    local commands; commands=()
+    _describe -t commands 'rn rename commands' commands "$@"
 }
 
 if [ "$funcstack[1]" = "_rn" ]; then
