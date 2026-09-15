@@ -1,5 +1,56 @@
+use std::fmt::Display;
+use std::path::{Component, Path};
+
 use clap::Subcommand as ClapSubcommand;
 use clap::{Args, Parser, ValueEnum};
+use thiserror::Error;
+
+
+#[derive(Error, Debug, PartialEq)]
+pub enum InvalidNoteName {
+    Empty,
+    NoPathComponent,
+    TrailingSeparator,
+    MultiplePathComponents,
+    InvalidPathComponent,
+    AdditionalWhitespaces,
+    LeadingDot,
+}
+
+impl Display for InvalidNoteName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Invalid note name")
+    }
+}
+
+fn valid_note_name(s: &str) -> Result<String, InvalidNoteName> {
+    if s.ends_with('/') || s.ends_with('\\') {
+        return Err(InvalidNoteName::TrailingSeparator);
+    }
+    let path = Path::new(s);
+    let mut components = path.components();
+    let (first, None) = (components.next(), components.next()) else {
+        return Err(InvalidNoteName::MultiplePathComponents);
+    };
+    let Some(first) = first else {
+        return Err(InvalidNoteName::NoPathComponent);
+    };
+    let Component::Normal(_) = first else {
+        return Err(InvalidNoteName::InvalidPathComponent);
+    };
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        return Err(InvalidNoteName::Empty);
+    }
+    if s != trimmed {
+        return Err(InvalidNoteName::AdditionalWhitespaces);
+    }
+    if s.starts_with('.') {
+        return Err(InvalidNoteName::LeadingDot);
+    }
+    Ok(s.to_string())
+}
+
 
 #[derive(Parser)]
 #[command(version)]
@@ -44,13 +95,14 @@ pub enum Subcommand {
 #[derive(Args, Debug)]
 pub struct NewArgs {
     #[arg(help = "Name of the note to be created")]
-    #[arg(value_parser=non_empty_trimmed)]
+    #[arg(value_parser=valid_note_name)]
     pub name: String,
 }
 
 #[derive(Args, Debug)]
 pub struct OpenArgs {
     #[arg(help = "Name of the note to open")]
+    #[arg(value_parser=valid_note_name)]
     pub name: String,
 
     #[arg(help = "Editor command used to open the note")]
@@ -61,15 +113,18 @@ pub struct OpenArgs {
 #[derive(Args, Debug)]
 pub struct RemoveArgs {
     #[arg(help = "Name of the note to be deleted")]
+    #[arg(value_parser=valid_note_name)]
     pub name: String,
 }
 
 #[derive(Args, Debug)]
 pub struct RenameArgs {
     #[arg(help = "Name of the note to rename")]
+    #[arg(value_parser=valid_note_name)]
     pub name: String,
 
     #[arg(help = "New name of the note")]
+    #[arg(value_parser=valid_note_name)]
     pub new_name: String,
 
     #[arg(help = "Overwrite the note, if <NEW_NAME> is already taken")]
@@ -152,12 +207,14 @@ pub enum ArchiveSubcommand {
 #[derive(Args, Debug)]
 pub struct ArchiveSaveArgs {
     #[arg(help = "Name of the note to archive")]
+    #[arg(value_parser=valid_note_name)]
     pub name: String,
 }
 
 #[derive(Args, Debug)]
 pub struct ArchiveOpenArgs {
     #[arg(help = "Name of the note to open")]
+    #[arg(value_parser=valid_note_name)]
     pub name: String,
 
     #[arg(help = "Editor command used to open the note")]
@@ -168,26 +225,20 @@ pub struct ArchiveOpenArgs {
 #[derive(Args, Debug)]
 pub struct ArchiveRestoreArgs {
     #[arg(help = "Name of the note to restore from archive")]
+    #[arg(value_parser=valid_note_name)]
     pub archive_name: String,
 
     #[arg(help = "New name of the note after its restored")]
     #[arg(short, long)]
+    #[arg(value_parser=valid_note_name)]
     pub new_name: Option<String>,
 }
 
 #[derive(Args, Debug)]
 pub struct ArchiveRemoveArgs {
     #[arg(help = "Name of the note to delete from archive")]
+    #[arg(value_parser=valid_note_name)]
     pub name: String,
-}
-
-fn non_empty_trimmed(s: &str) -> Result<String, String> {
-    let trimmed = s.trim();
-    if trimmed.is_empty() {
-        Err("Name must not be empty".to_string())
-    } else {
-        Ok(trimmed.to_string())
-    }
 }
 
 #[cfg(test)]
@@ -208,6 +259,19 @@ mod tests {
                 ),
             }
         };
+    }
+
+    #[test]
+    fn test_valid_note_name() {
+        assert!(valid_note_name("test").is_ok());
+        assert!(valid_note_name("test.md").is_ok());
+        assert_eq!(valid_note_name("").unwrap_err(), InvalidNoteName::NoPathComponent);
+        assert_eq!(valid_note_name(" ").unwrap_err(), InvalidNoteName::Empty);
+        assert_eq!(valid_note_name("\t").unwrap_err(), InvalidNoteName::Empty);
+        assert_eq!(valid_note_name("..").unwrap_err(), InvalidNoteName::InvalidPathComponent);
+        assert_eq!(valid_note_name("../test.md").unwrap_err(), InvalidNoteName::MultiplePathComponents);
+        assert_eq!(valid_note_name("test/").unwrap_err(), InvalidNoteName::TrailingSeparator);
+        assert_eq!(valid_note_name(" test").unwrap_err(), InvalidNoteName::AdditionalWhitespaces);
     }
 
     #[test]
