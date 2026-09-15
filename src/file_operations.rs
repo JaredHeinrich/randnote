@@ -35,6 +35,7 @@ pub trait FileOperations {
     fn read_file(&self, path: &Path) -> Result<String>;
     fn write_file(&mut self, path: &Path, value: &str) -> Result<()>;
     fn copy(&mut self, source_path: &Path, destination_path: &Path) -> Result<()>;
+    fn rename(&mut self, source_path: &Path, destination_path: &Path) -> Result<()>;
 }
 
 pub struct FileSystem;
@@ -95,5 +96,9 @@ impl FileOperations for FileSystem {
         fs::copy(source_path, destination_path)
             .map(|_| ())
             .map_err(Into::into)
+    }
+
+    fn rename(&mut self, source_path: &Path, destination_path: &Path) -> Result<()> {
+        fs::rename(source_path, destination_path).map_err(Into::into)
     }
 }

@@ -71,6 +71,10 @@ pub struct RenameArgs {
 
     #[arg(help = "New name of the note")]
     pub new_name: String,
+
+    #[arg(help = "Overwrite the note, if <NEW_NAME> is already taken")]
+    #[arg(short, long)]
+    pub force: bool,
 }
 
 #[derive(Args, Debug)]
@@ -190,8 +194,8 @@ fn non_empty_trimmed(s: &str) -> Result<String, String> {
 #[allow(clippy::panic)] // tests
 #[allow(clippy::unwrap_used)] // tests
 mod tests {
-    use core::panic;
     use super::*;
+    use core::panic;
 
     macro_rules! unwrap_variant {
         ($val:expr, $variant:path) => {
@@ -201,7 +205,7 @@ mod tests {
                     "expected variant {}, but found: {:?}",
                     stringify!($variant),
                     other
-            ),
+                ),
             }
         };
     }
@@ -383,7 +387,6 @@ mod tests {
         let config_args = unwrap_variant!(cli.subcommand, Subcommand::Config);
         let get_args = unwrap_variant!(config_args.subcommand, ConfigSubcommand::Get);
         assert_eq!(get_args.value_names, ["value_name"]);
-
     }
 
     #[test]
@@ -485,7 +488,6 @@ mod tests {
         let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
         let open_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Open);
         assert_eq!(open_args.name, "note_1");
-
     }
 
     #[test]
@@ -511,7 +513,6 @@ mod tests {
         assert_eq!(open_args.editor.unwrap(), "nvim");
         assert_eq!(open_args.name, "note_1");
     }
-
 
     #[test]
     fn test_archive_restore_no_name() {
