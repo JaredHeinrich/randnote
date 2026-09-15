@@ -1,3 +1,7 @@
+# 0.2.1 (15-09-2026)
+
+Add `rename` command.
+
 # 0.2.0 (23-08-2026)
 
 Rename directory `notebooks` to `notebook`.
