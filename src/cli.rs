@@ -5,7 +5,6 @@ use clap::Subcommand as ClapSubcommand;
 use clap::{Args, Parser, ValueEnum};
 use thiserror::Error;
 
-
 #[derive(Error, Debug, PartialEq)]
 pub enum InvalidNoteName {
     Empty,
@@ -50,7 +49,6 @@ fn valid_note_name(s: &str) -> Result<String, InvalidNoteName> {
     }
     Ok(s.to_string())
 }
-
 
 #[derive(Parser)]
 #[command(version)]
@@ -265,13 +263,28 @@ mod tests {
     fn test_valid_note_name() {
         assert!(valid_note_name("test").is_ok());
         assert!(valid_note_name("test.md").is_ok());
-        assert_eq!(valid_note_name("").unwrap_err(), InvalidNoteName::NoPathComponent);
         assert_eq!(valid_note_name(" ").unwrap_err(), InvalidNoteName::Empty);
         assert_eq!(valid_note_name("\t").unwrap_err(), InvalidNoteName::Empty);
-        assert_eq!(valid_note_name("..").unwrap_err(), InvalidNoteName::InvalidPathComponent);
-        assert_eq!(valid_note_name("../test.md").unwrap_err(), InvalidNoteName::MultiplePathComponents);
-        assert_eq!(valid_note_name("test/").unwrap_err(), InvalidNoteName::TrailingSeparator);
-        assert_eq!(valid_note_name(" test").unwrap_err(), InvalidNoteName::AdditionalWhitespaces);
+        assert_eq!(
+            valid_note_name("").unwrap_err(),
+            InvalidNoteName::NoPathComponent
+        );
+        assert_eq!(
+            valid_note_name("..").unwrap_err(),
+            InvalidNoteName::InvalidPathComponent
+        );
+        assert_eq!(
+            valid_note_name("../test.md").unwrap_err(),
+            InvalidNoteName::MultiplePathComponents
+        );
+        assert_eq!(
+            valid_note_name("test/").unwrap_err(),
+            InvalidNoteName::TrailingSeparator
+        );
+        assert_eq!(
+            valid_note_name(" test").unwrap_err(),
+            InvalidNoteName::AdditionalWhitespaces
+        );
     }
 
     #[test]
