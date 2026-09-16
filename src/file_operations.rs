@@ -31,11 +31,11 @@ pub trait FileOperations {
     fn create_file(&mut self, path: &Path) -> Result<()>;
     fn create_dir(&mut self, path: &Path) -> Result<()>;
     fn open_file(&mut self, editor_command: &str, path: &Path) -> Result<()>;
-    fn exists(&self, path: &Path) -> Result<bool>;
+    fn exists(&self, path: &Path) -> bool;
     fn read_file(&self, path: &Path) -> Result<String>;
     fn write_file(&mut self, path: &Path, value: &str) -> Result<()>;
-    fn copy(&mut self, source_path: &Path, destination_path: &Path) -> Result<()>;
-    fn rename(&mut self, source_path: &Path, destination_path: &Path) -> Result<()>;
+    fn copy_file(&mut self, source_path: &Path, destination_path: &Path) -> Result<()>;
+    fn rename_file(&mut self, source_path: &Path, destination_path: &Path) -> Result<()>;
 }
 
 pub struct FileSystem;
@@ -45,6 +45,9 @@ impl FileOperations for FileSystem {
         let dir = fs::read_dir(dir)?;
         for entry in dir {
             let entry = entry?;
+            if !entry.file_type()?.is_file() {
+                continue;
+            }
             let file_name = entry
                 .file_name()
                 .into_string()
@@ -80,25 +83,34 @@ impl FileOperations for FileSystem {
             .map_err(Into::into)
     }
 
-    fn exists(&self, path: &Path) -> Result<bool> {
-        fs::exists(path).map_err(Into::into)
+    fn exists(&self, path: &Path) -> bool {
+        path.exists()
     }
 
     fn read_file(&self, path: &Path) -> Result<String> {
         fs::read_to_string(path).map_err(Into::into)
     }
 
-    fn write_file(&mut self, file_path: &Path, content: &str) -> Result<()> {
-        fs::write(file_path, content).map_err(Into::into)
+    fn write_file(&mut self, path: &Path, content: &str) -> Result<()> {
+        if self.exists(path) && !path.is_file() {
+            return Err(FileSystemError::NotAFile(path.to_path_buf()).into());
+        }
+        fs::write(path, content).map_err(Into::into)
     }
 
-    fn copy(&mut self, source_path: &Path, destination_path: &Path) -> Result<()> {
+    fn copy_file(&mut self, source_path: &Path, destination_path: &Path) -> Result<()> {
+        if !source_path.is_file() {
+            return Err(FileSystemError::NotAFile(source_path.to_path_buf()).into());
+        }
         fs::copy(source_path, destination_path)
             .map(|_| ())
             .map_err(Into::into)
     }
 
-    fn rename(&mut self, source_path: &Path, destination_path: &Path) -> Result<()> {
+    fn rename_file(&mut self, source_path: &Path, destination_path: &Path) -> Result<()> {
+        if !source_path.is_file() {
+            return Err(FileSystemError::NotAFile(source_path.to_path_buf()).into());
+        }
         fs::rename(source_path, destination_path).map_err(Into::into)
     }
 }

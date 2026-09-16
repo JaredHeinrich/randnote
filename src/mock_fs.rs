@@ -96,11 +96,11 @@ impl FileOperations for MockFileSystem {
         Ok(())
     }
 
-    fn exists(&self, path: &Path) -> Result<bool> {
+    fn exists(&self, path: &Path) -> bool {
         if self.is_dir(path) || self.is_file(path) {
-            return Ok(true);
+            return true;
         }
-        Ok(false)
+        false
     }
 
     fn read_file(&self, _path: &Path) -> Result<String> {
@@ -111,11 +111,11 @@ impl FileOperations for MockFileSystem {
         Err(anyhow!("Can't write to file in mock file system"))
     }
 
-    fn copy(&mut self, _source_path: &Path, _destination_path: &Path) -> Result<()> {
+    fn copy_file(&mut self, _source_path: &Path, _destination_path: &Path) -> Result<()> {
         Err(anyhow!("Can't copy files in mock file system"))
     }
 
-    fn rename(&mut self, _source_path: &Path, _destination_path: &Path) -> Result<()> {
+    fn rename_file(&mut self, _source_path: &Path, _destination_path: &Path) -> Result<()> {
         Err(anyhow!("Can't rename files in mock file system"))
     }
 }

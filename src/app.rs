@@ -67,15 +67,15 @@ impl<FS: FileOperations> App<FS> {
 
     fn check_dir_structure(&mut self) -> Result<()> {
         let rn_root_dir = &self.rn_root_dir;
-        if !self.fs.exists(rn_root_dir)? {
+        if !self.fs.exists(rn_root_dir) {
             self.fs.create_dir(rn_root_dir)?;
         }
         let active_dir = self.get_dir_path(NoteType::Active);
-        if !self.fs.exists(&active_dir)? {
+        if !self.fs.exists(&active_dir) {
             self.fs.create_dir(&active_dir)?;
         }
         let archive_dir = self.get_dir_path(NoteType::Archived);
-        if !self.fs.exists(&archive_dir)? {
+        if !self.fs.exists(&archive_dir) {
             self.fs.create_dir(&archive_dir)?;
         }
         Ok(())
@@ -83,7 +83,7 @@ impl<FS: FileOperations> App<FS> {
 
     fn open_note(&mut self, name: String, note_type: NoteType) -> Result<Message> {
         let path = self.get_note_path(name.as_str(), note_type);
-        if !self.fs.exists(&path)? {
+        if !self.fs.exists(&path) {
             return Err(AppError::NotFound(name).into());
         }
         self.fs.open_file(&self.config.editor, &path)?;
@@ -93,7 +93,7 @@ impl<FS: FileOperations> App<FS> {
     fn get_config_values<T: AsRef<str>>(&self, value_names: &[T]) -> Result<Vec<(String, String)>> {
         let mut config_values: Vec<(String, String)> = Vec::new();
         let config_file_path = config::config_file()?;
-        let config_exists = self.fs.exists(&config_file_path)?;
+        let config_exists = self.fs.exists(&config_file_path);
         if !config_exists {
             return Ok(config_values);
         }
@@ -115,7 +115,7 @@ impl<FS: FileOperations> App<FS> {
     fn handle_new(&mut self, args: cli::NewArgs) -> Result<Message> {
         let name = args.name;
         let path = self.get_note_path(&name, NoteType::Active);
-        if self.fs.exists(&path)? {
+        if self.fs.exists(&path) {
             return Err(AppError::AlreadyExists(name).into());
         }
         self.fs.create_file(&path)?;
@@ -126,7 +126,7 @@ impl<FS: FileOperations> App<FS> {
     fn handle_remove(&mut self, args: cli::RemoveArgs) -> Result<Message> {
         let name = args.name;
         let path = self.get_note_path(&name, NoteType::Active);
-        if !self.fs.exists(&path)? {
+        if !self.fs.exists(&path) {
             return Err(AppError::NotFound(name).into());
         }
         self.fs.delete_file(&path)?;
@@ -165,7 +165,7 @@ impl<FS: FileOperations> App<FS> {
     #[allow(clippy::needless_pass_by_value)]
     fn handle_config_generate(&mut self, args: cli::ConfigGenerateArgs) -> Result<Message> {
         let config_file_path = config::config_file()?;
-        let config_exists = self.fs.exists(&config_file_path)?;
+        let config_exists = self.fs.exists(&config_file_path);
         if config_exists && !args.force {
             return Err(AppError::ConfigAlreadyExists(config_file_path).into());
         }
@@ -196,39 +196,29 @@ impl<FS: FileOperations> App<FS> {
         let path = self.get_note_path(&name, NoteType::Active);
         let new_name = args.new_name;
         let new_path = self.get_note_path(&new_name, NoteType::Active);
-        if !self.fs.exists(&path)? {
+        if !self.fs.exists(&path) {
             return Err(AppError::NotFound(name).into());
         }
-        if !args.force && self.fs.exists(&new_path)? {
+        if !args.force && self.fs.exists(&new_path) {
             return Err(AppError::RenameAlreadyExists(new_name).into());
         }
-        self.fs.rename(&path, &new_path)?;
+        self.fs.rename_file(&path, &new_path)?;
         Ok(Message::Renamed((name, new_name)))
-    }
-
-    fn handle_archive(&mut self, args: cli::ArchiveArgs) -> Result<Message> {
-        match args.subcommand {
-            cli::ArchiveSubcommand::Save(args) => self.handle_archive_save(args),
-            cli::ArchiveSubcommand::List => self.handle_archive_list(),
-            cli::ArchiveSubcommand::Open(args) => self.handle_archive_open(args),
-            cli::ArchiveSubcommand::Restore(args) => self.handle_archive_restore(args),
-            cli::ArchiveSubcommand::Remove(args) => self.handle_archive_remove(args),
-        }
     }
 
     fn handle_archive_save(&mut self, args: cli::ArchiveSaveArgs) -> Result<Message> {
         let name = args.name;
         let active_path = self.get_note_path(name.as_str(), NoteType::Active);
-        if !self.fs.exists(&active_path)? {
+        if !self.fs.exists(&active_path) {
             return Err(AppError::NotFound(name).into());
         }
         let time_stamp = Local::now().format("%d-%m-%Y-%H:%M:%S").to_string();
         let archived_name = format!("{name}_{time_stamp}");
         let archived_path = self.get_note_path(&archived_name, NoteType::Archived);
-        if self.fs.exists(&archived_path)? {
+        if self.fs.exists(&archived_path) {
             return Err(AppError::ArchiveAlreadyExists(archived_name).into());
         }
-        self.fs.rename(&active_path, &archived_path)?;
+        self.fs.rename_file(&active_path, &archived_path)?;
         Ok(Message::ArchivedNote((name, archived_name)))
     }
 
@@ -253,22 +243,32 @@ impl<FS: FileOperations> App<FS> {
             .to_owned()
         });
         let path = self.get_note_path(new_name.as_str(), NoteType::Active);
-        if self.fs.exists(&path)? {
+        if self.fs.exists(&path) {
             return Err(AppError::RestoreAlreadyExists(new_name).into());
         }
         let archived_path = self.get_note_path(args.archive_name.as_str(), NoteType::Archived);
-        self.fs.copy(&archived_path, &path)?;
+        self.fs.copy_file(&archived_path, &path)?;
         Ok(Message::RestoredNote((args.archive_name, new_name)))
     }
 
     fn handle_archive_remove(&mut self, args: cli::ArchiveRemoveArgs) -> Result<Message> {
         let name = args.name;
         let path = self.get_note_path(name.as_str(), NoteType::Archived);
-        if !self.fs.exists(&path)? {
+        if !self.fs.exists(&path) {
             return Err(AppError::NotFound(name).into());
         }
         self.fs.delete_file(&path)?;
         Ok(Message::DeletedNote)
+    }
+
+    fn handle_archive(&mut self, args: cli::ArchiveArgs) -> Result<Message> {
+        match args.subcommand {
+            cli::ArchiveSubcommand::Save(args) => self.handle_archive_save(args),
+            cli::ArchiveSubcommand::List => self.handle_archive_list(),
+            cli::ArchiveSubcommand::Open(args) => self.handle_archive_open(args),
+            cli::ArchiveSubcommand::Restore(args) => self.handle_archive_restore(args),
+            cli::ArchiveSubcommand::Remove(args) => self.handle_archive_remove(args),
+        }
     }
 
     pub fn handle_command(&mut self, command: cli::Cli) -> Result<Message> {
