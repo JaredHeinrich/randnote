@@ -1,6 +1,5 @@
 use std::{ffi::OsString, fmt::Display, path::PathBuf};
 
-use anyhow::Error;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -65,6 +64,8 @@ impl Display for SystemError {
 pub enum FileSystemError {
     NotAFile(PathBuf),
     FileNameNoUTF8(OsString),
+    PathNoUTF8(PathBuf),
+    NoParentDirectory,
 }
 
 impl Display for FileSystemError {
@@ -75,14 +76,19 @@ impl Display for FileSystemError {
             Self::FileNameNoUTF8(file_name) => {
                 writeln!(f, "File name {file_name:?} is no valid UTF-8.")
             }
+            #[allow(clippy::unnecessary_debug_formatting)]
+            Self::PathNoUTF8(path) => {
+                writeln!(f, "Path {path:?} is no valid UTF-8.")
+            }
+            Self::NoParentDirectory => writeln!(f, "File has no parent directory."),
         }
     }
 }
 
 #[derive(Error, Debug)]
-pub struct InternalError<E = Error>(pub E);
+pub struct InternalError<E>(pub E);
 
-impl Display for InternalError {
+impl<T: Display> Display for InternalError<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
