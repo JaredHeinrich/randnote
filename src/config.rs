@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Error;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
@@ -54,7 +55,7 @@ impl Config {
     }
 
     pub fn to_toml(&self) -> Result<String> {
-        toml::to_string(self).map_err(|e| InternalError(e.into()).into())
+        toml::to_string(self).map_err(|e| InternalError::<Error>(e.into()).into())
     }
 }
 

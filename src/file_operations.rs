@@ -6,8 +6,8 @@ use std::{
     process::Command,
 };
 
-use crate::error::FileSystemError;
 use crate::error::SystemError;
+use crate::error::{FileSystemError, InternalError};
 
 fn check_command(command_name: &str) -> Result<()> {
     let check_command = "which";
@@ -76,7 +76,20 @@ impl FileOperations for FileSystem {
         if !path.is_file() {
             return Err(FileSystemError::NotAFile(path.to_path_buf()).into());
         }
-        Command::new(editor_command)
+        let mut command = Command::new(editor_command);
+        if editor_command == "nvim" {
+            let parent_path = path
+                .parent()
+                .ok_or(InternalError(FileSystemError::NoParentDirectory))?;
+            let parent_path =
+                parent_path
+                    .to_str()
+                    .ok_or(InternalError(FileSystemError::PathNoUTF8(
+                        parent_path.to_path_buf(),
+                    )))?;
+            command.arg("-c").arg(format!("cd {parent_path}"));
+        }
+        command
             .arg(path.as_os_str())
             .status()
             .map(|_| ())
