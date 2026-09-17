@@ -18,7 +18,17 @@ pub enum InvalidNoteName {
 
 impl Display for InvalidNoteName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Invalid note name")
+        match self {
+            Self::Empty | Self::NoPathComponent => write!(f, "Note name mustn't be empty."),
+            Self::TrailingSeparator => write!(f, "Note name mustn't end with a seperator."),
+            Self::MultiplePathComponents | Self::InvalidPathComponent => {
+                write!(f, "Note name mustn't be a path")
+            }
+            Self::AdditionalWhitespaces => {
+                write!(f, "Note name mustn't have leading or trailing whitespaces.")
+            }
+            Self::LeadingDot => write!(f, "Note name mustn't start with a dot."),
+        }
     }
 }
 
