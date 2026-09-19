@@ -50,10 +50,7 @@ impl MockFileSystem {
     }
 
     fn is_dir(&self, path: &Path) -> bool {
-        if *path == self.rn_root_dir {
-            return true;
-        }
-        false
+        *path == self.rn_root_dir
     }
 }
 
@@ -97,10 +94,7 @@ impl FileOperations for MockFileSystem {
     }
 
     fn exists(&self, path: &Path) -> bool {
-        if self.is_dir(path) || self.is_file(path) {
-            return true;
-        }
-        false
+        self.is_dir(path) || self.is_file(path)
     }
 
     fn read_file(&self, _path: &Path) -> Result<String> {

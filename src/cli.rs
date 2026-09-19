@@ -622,7 +622,7 @@ mod tests {
         let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
         assert_eq!(restore_args.archive_name, "note_1");
         assert_eq!(restore_args.new_name, None);
-        assert_eq!(restore_args.force, false);
+        assert!(!restore_args.force);
     }
 
     #[test]
@@ -632,7 +632,7 @@ mod tests {
         let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
         assert_eq!(restore_args.archive_name, "note_1");
         assert_eq!(restore_args.new_name.unwrap(), "note");
-        assert_eq!(restore_args.force, false);
+        assert!(!restore_args.force);
     }
 
     #[test]
@@ -642,7 +642,7 @@ mod tests {
         let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
         assert_eq!(restore_args.archive_name, "note_1");
         assert_eq!(restore_args.new_name, None);
-        assert_eq!(restore_args.force, true);
+        assert!(restore_args.force);
     }
 
     #[test]
