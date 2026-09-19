@@ -29,6 +29,7 @@ _rn() {
           _arguments \
             '::name -- Name of the note to open:_notebook' \
             '--editor+[Editor command used to open the note]:EDITOR:' \
+            '--new[Create note if it does not exist]' \
             && ret=0
           ;;
         (remove)
@@ -45,7 +46,7 @@ _rn() {
           _arguments \
             ':name -- Name of the note to rename:_notebook' \
             ':new_name -- New name of the note:' \
-             '(-f --force)'{-f,--force}'[Overwrite the config file if one already exists]' \
+             '(-f --force)'{-f,--force}'[Overwrite the note, if <NEW_NAME> is already taken]' \
             && ret=0
           ;;
         (list)
@@ -166,6 +167,7 @@ _rn() {
             _arguments \
               ':archive_name -- Name of the note to restore from archive:_archive' \
               '--new-name+[New name of the note after its restored]:NEW_NAME:' \
+              '(-f --force)'{-f,--force}'[Replace existing note if name is already taken]' \
               && ret=0
             ;;
           (remove)

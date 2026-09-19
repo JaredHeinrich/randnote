@@ -18,7 +18,17 @@ pub enum InvalidNoteName {
 
 impl Display for InvalidNoteName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Invalid note name")
+        match self {
+            Self::Empty | Self::NoPathComponent => write!(f, "Note name mustn't be empty."),
+            Self::TrailingSeparator => write!(f, "Note name mustn't end with a seperator."),
+            Self::MultiplePathComponents | Self::InvalidPathComponent => {
+                write!(f, "Note name mustn't be a path")
+            }
+            Self::AdditionalWhitespaces => {
+                write!(f, "Note name mustn't have leading or trailing whitespaces.")
+            }
+            Self::LeadingDot => write!(f, "Note name mustn't start with a dot."),
+        }
     }
 }
 
@@ -84,6 +94,9 @@ pub enum Subcommand {
     Config(ConfigArgs),
 
     #[command(about = "Completion script for specific shell")]
+    #[command(after_help = "To activate completions do the following:\n\n\
+            For `zsh` add the script to a directory in your $FPATH.\n\
+            e.g. `rn completions --shell zsh > ~/.local/share/zsh/completions/_rn`")]
     Completions(CompletionArgs),
 
     #[command(about = "View and manage archive")]
@@ -106,6 +119,10 @@ pub struct OpenArgs {
     #[arg(help = "Editor command used to open the note")]
     #[arg(short, long)]
     pub editor: Option<String>,
+
+    #[arg(help = "Create note if it does not exist")]
+    #[arg(short, long)]
+    pub new: bool,
 }
 
 #[derive(Args, Debug)]
@@ -230,6 +247,10 @@ pub struct ArchiveRestoreArgs {
     #[arg(short, long)]
     #[arg(value_parser=valid_note_name)]
     pub new_name: Option<String>,
+
+    #[arg(help = "Replace existing note if name is already taken")]
+    #[arg(short, long)]
+    pub force: bool,
 }
 
 #[derive(Args, Debug)]
@@ -340,6 +361,7 @@ mod tests {
         let cli = Cli::parse_from(["rn", "open", "my_note"]);
         let args = unwrap_variant!(cli.subcommand, Subcommand::Open);
         assert_eq!(args.name, "my_note");
+        assert!(!args.new);
     }
 
     #[test]
@@ -348,6 +370,7 @@ mod tests {
         let args = unwrap_variant!(cli.subcommand, Subcommand::Open);
         assert_eq!(args.name, "my_note");
         assert_eq!(args.editor.unwrap(), "nvim");
+        assert!(!args.new);
     }
 
     #[test]
@@ -356,6 +379,23 @@ mod tests {
         let args = unwrap_variant!(cli.subcommand, Subcommand::Open);
         assert_eq!(args.name, "my_note");
         assert_eq!(args.editor.unwrap(), "nvim");
+        assert!(!args.new);
+    }
+
+    #[test]
+    fn test_open_with_new_short() {
+        let cli = Cli::parse_from(["rn", "open", "my_note", "-n"]);
+        let args = unwrap_variant!(cli.subcommand, Subcommand::Open);
+        assert_eq!(args.name, "my_note");
+        assert!(args.new);
+    }
+
+    #[test]
+    fn test_open_with_new_long() {
+        let cli = Cli::parse_from(["rn", "open", "my_note", "--new"]);
+        let args = unwrap_variant!(cli.subcommand, Subcommand::Open);
+        assert_eq!(args.name, "my_note");
+        assert!(args.new);
     }
 
     #[test]
@@ -608,6 +648,7 @@ mod tests {
         let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
         assert_eq!(restore_args.archive_name, "note_1");
         assert_eq!(restore_args.new_name, None);
+        assert!(!restore_args.force);
     }
 
     #[test]
@@ -617,6 +658,17 @@ mod tests {
         let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
         assert_eq!(restore_args.archive_name, "note_1");
         assert_eq!(restore_args.new_name.unwrap(), "note");
+        assert!(!restore_args.force);
+    }
+
+    #[test]
+    fn test_archive_restore_with_force() {
+        let cli = Cli::parse_from(["rn", "archive", "restore", "note_1", "--force"]);
+        let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
+        let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
+        assert_eq!(restore_args.archive_name, "note_1");
+        assert_eq!(restore_args.new_name, None);
+        assert!(restore_args.force);
     }
 
     #[test]

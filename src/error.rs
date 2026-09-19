@@ -17,23 +17,28 @@ impl Display for AppError {
             Self::AlreadyExists(name) => writeln!(f, "A note named \"{name}\" already exists."),
             Self::NotFound(name) => writeln!(f, "No note named \"{name}\" exists."),
             Self::ConfigAlreadyExists(path) => {
-                writeln!(f, "A config file already exists {}.", path.display())?;
-                writeln!(f, "To overwrite it with the default use `--force`.")
+                writeln!(
+                    f,
+                    "A config file already exists {}.\n\
+                    To overwrite it with the default use `--force`.",
+                    path.display()
+                )
             }
             Self::RenameAlreadyExists(name) => {
-                writeln!(f, "A note named \"{name}\" already exists.")?;
-                writeln!(f, "To overwrite it use `--force`.")
+                writeln!(
+                    f,
+                    "A note named \"{name}\" already exists.\n\
+                    To overwrite it use `--force`."
+                )
             }
             Self::RestoreAlreadyExists(name) => {
                 writeln!(
                     f,
-                    "Can't restore note, because a note named \"{name}\" already exists."
-                )?;
-                writeln!(
-                    f,
-                    "Use `--new-name` to change the name of the restored note."
-                )?;
-                writeln!(f, "Or remove/archive the existing note.")
+                    "Can't restore note, because a note named \"{name}\" already exists.\n\
+                    Use `--new-name` to change the name of the restored note.\n\
+                    Use `--force` to replace the existing note.\n\
+                    Or remove/archive the existing note manually."
+                )
             }
             Self::ArchiveAlreadyExists(name) => writeln!(
                 f,

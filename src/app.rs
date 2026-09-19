@@ -142,6 +142,10 @@ impl<FS: FileOperations> App<FS> {
         if let Some(editor) = args.editor {
             self.config.editor = editor;
         }
+        let path = self.get_note_path(&args.name, NoteType::Active);
+        if args.new && !self.fs.exists(&path) {
+            self.fs.create_file(&path)?;
+        }
         self.open_note(args.name, NoteType::Active)
     }
 
@@ -243,12 +247,20 @@ impl<FS: FileOperations> App<FS> {
             .to_owned()
         });
         let path = self.get_note_path(new_name.as_str(), NoteType::Active);
-        if self.fs.exists(&path) {
+        let name_taken = self.fs.exists(&path);
+        if name_taken && !args.force {
             return Err(AppError::RestoreAlreadyExists(new_name).into());
         }
         let archived_path = self.get_note_path(args.archive_name.as_str(), NoteType::Archived);
         self.fs.copy_file(&archived_path, &path)?;
-        Ok(Message::RestoredNote((args.archive_name, new_name)))
+        if name_taken {
+            Ok(Message::RestoredAndReplacedNote((
+                args.archive_name,
+                new_name,
+            )))
+        } else {
+            Ok(Message::RestoredNote((args.archive_name, new_name)))
+        }
     }
 
     fn handle_archive_remove(&mut self, args: cli::ArchiveRemoveArgs) -> Result<Message> {

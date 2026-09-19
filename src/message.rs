@@ -12,6 +12,7 @@ pub enum Message {
     Renamed((String, String)),
     ArchivedNote((String, String)),
     RestoredNote((String, String)),
+    RestoredAndReplacedNote((String, String)),
     Empty,
 }
 impl Display for Message {
@@ -47,6 +48,9 @@ impl Display for Message {
                 writeln!(f, "Archived note {original} to {archived}")
             }
             Self::RestoredNote((archived, new)) => writeln!(f, "Restored note {archived} to {new}"),
+            Self::RestoredAndReplacedNote((archived, new)) => {
+                writeln!(f, "Restored note {archived} and replaced {new}")
+            }
             Self::Empty => Ok(()),
         }
     }
