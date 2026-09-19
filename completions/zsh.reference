@@ -179,6 +179,8 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-n+[New name of the note after its restored]:NEW_NAME:_default' \
 '--new-name=[New name of the note after its restored]:NEW_NAME:_default' \
+'-f[Replace existing note if name is already taken]' \
+'--force[Replace existing note if name is already taken]' \
 '-h[Print help]' \
 '--help[Print help]' \
 ':archive_name -- Name of the note to restore from archive:_default' \
