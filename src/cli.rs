@@ -240,6 +240,10 @@ pub struct ArchiveRestoreArgs {
     #[arg(short, long)]
     #[arg(value_parser=valid_note_name)]
     pub new_name: Option<String>,
+
+    #[arg(help = "Replace existing note if name is already taken")]
+    #[arg(short, long)]
+    pub force: bool,
 }
 
 #[derive(Args, Debug)]
@@ -618,6 +622,7 @@ mod tests {
         let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
         assert_eq!(restore_args.archive_name, "note_1");
         assert_eq!(restore_args.new_name, None);
+        assert_eq!(restore_args.force, false);
     }
 
     #[test]
@@ -627,6 +632,17 @@ mod tests {
         let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
         assert_eq!(restore_args.archive_name, "note_1");
         assert_eq!(restore_args.new_name.unwrap(), "note");
+        assert_eq!(restore_args.force, false);
+    }
+
+    #[test]
+    fn test_archive_restore_with_force() {
+        let cli = Cli::parse_from(["rn", "archive", "restore", "note_1", "--force"]);
+        let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
+        let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
+        assert_eq!(restore_args.archive_name, "note_1");
+        assert_eq!(restore_args.new_name, None);
+        assert_eq!(restore_args.force, true);
     }
 
     #[test]
