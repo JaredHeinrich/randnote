@@ -29,6 +29,7 @@ _rn() {
           _arguments \
             '::name -- Name of the note to open:_notebook' \
             '--editor+[Editor command used to open the note]:EDITOR:' \
+            '--new[Create note if it does not exist]' \
             && ret=0
           ;;
         (remove)

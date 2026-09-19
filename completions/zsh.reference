@@ -39,6 +39,8 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-e+[Editor command used to open the note]:EDITOR:_default' \
 '--editor=[Editor command used to open the note]:EDITOR:_default' \
+'-n[Create note if it does not exist]' \
+'--new[Create note if it does not exist]' \
 '-h[Print help]' \
 '--help[Print help]' \
 ':name -- Name of the note to open:_default' \
