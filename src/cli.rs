@@ -94,6 +94,9 @@ pub enum Subcommand {
     Config(ConfigArgs),
 
     #[command(about = "Completion script for specific shell")]
+    #[command(after_help = "To activate completions do the following:\n\n\
+            For `zsh` add the script to a directory in your $FPATH.\n\
+            e.g. `rn completions --shell zsh > ~/.local/share/zsh/completions/_rn`")]
     Completions(CompletionArgs),
 
     #[command(about = "View and manage archive")]
