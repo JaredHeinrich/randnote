@@ -116,6 +116,10 @@ pub struct OpenArgs {
     #[arg(help = "Editor command used to open the note")]
     #[arg(short, long)]
     pub editor: Option<String>,
+
+    #[arg(help = "Create note if it does not exist")]
+    #[arg(short, long)]
+    pub new: bool,
 }
 
 #[derive(Args, Debug)]
@@ -354,6 +358,7 @@ mod tests {
         let cli = Cli::parse_from(["rn", "open", "my_note"]);
         let args = unwrap_variant!(cli.subcommand, Subcommand::Open);
         assert_eq!(args.name, "my_note");
+        assert!(!args.new);
     }
 
     #[test]
@@ -362,6 +367,7 @@ mod tests {
         let args = unwrap_variant!(cli.subcommand, Subcommand::Open);
         assert_eq!(args.name, "my_note");
         assert_eq!(args.editor.unwrap(), "nvim");
+        assert!(!args.new);
     }
 
     #[test]
@@ -370,6 +376,23 @@ mod tests {
         let args = unwrap_variant!(cli.subcommand, Subcommand::Open);
         assert_eq!(args.name, "my_note");
         assert_eq!(args.editor.unwrap(), "nvim");
+        assert!(!args.new);
+    }
+
+    #[test]
+    fn test_open_with_new_short() {
+        let cli = Cli::parse_from(["rn", "open", "my_note", "-n"]);
+        let args = unwrap_variant!(cli.subcommand, Subcommand::Open);
+        assert_eq!(args.name, "my_note");
+        assert!(args.new);
+    }
+
+    #[test]
+    fn test_open_with_new_long() {
+        let cli = Cli::parse_from(["rn", "open", "my_note", "--new"]);
+        let args = unwrap_variant!(cli.subcommand, Subcommand::Open);
+        assert_eq!(args.name, "my_note");
+        assert!(args.new);
     }
 
     #[test]

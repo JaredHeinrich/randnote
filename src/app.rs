@@ -142,6 +142,10 @@ impl<FS: FileOperations> App<FS> {
         if let Some(editor) = args.editor {
             self.config.editor = editor;
         }
+        let path = self.get_note_path(&args.name, NoteType::Active);
+        if args.new && !self.fs.exists(&path) {
+            self.fs.create_file(&path)?;
+        }
         self.open_note(args.name, NoteType::Active)
     }
 
