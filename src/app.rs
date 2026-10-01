@@ -113,7 +113,7 @@ impl<FS: FileOperations> App<FS> {
 
     #[allow(clippy::needless_pass_by_value)]
     fn handle_new(&mut self, args: cli::NewArgs) -> Result<Message> {
-        let name = args.name;
+        let name = args.names.into_iter().next().unwrap();
         let path = self.get_note_path(&name, NoteType::Active);
         if self.fs.exists(&path) {
             return Err(AppError::AlreadyExists(name).into());
