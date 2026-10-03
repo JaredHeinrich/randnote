@@ -7,11 +7,12 @@ use crate::cli;
 use crate::config;
 use crate::config::{Config, PartialConfig};
 use crate::error::AppError;
+use crate::error::ErrorContext;
 use crate::error::SystemError;
 use crate::file_operations::FileOperations;
 use crate::message::Message;
 
-const RN_ROOT_DIR: &str = ".rn";
+const ROOT_DIR_NAME: &str = ".rn";
 const NOTEBOOK_DIR_NAME: &str = "notebook";
 const ARCHIVE_DIR_NAME: &str = "archive";
 
@@ -23,31 +24,31 @@ enum NoteType {
 
 pub struct App<FS: FileOperations> {
     pub config: config::Config,
-    pub rn_root_dir: PathBuf,
+    pub root_dir: PathBuf,
     fs: FS,
 }
 
 impl<FS: FileOperations> App<FS> {
     pub fn new(config: config::Config, fs: FS) -> Result<Self> {
-        let Some(mut rn_root_dir) = std::env::home_dir() else {
+        let Some(mut root_dir) = std::env::home_dir() else {
             return Err(SystemError::NoHomeDir.into());
         };
-        rn_root_dir.push(RN_ROOT_DIR);
+        root_dir.push(ROOT_DIR_NAME);
         Ok(Self {
             config,
-            rn_root_dir,
+            root_dir,
             fs,
         })
     }
 
     fn notebook_dir(&self) -> PathBuf {
-        let mut notebook_dir = self.rn_root_dir.clone();
+        let mut notebook_dir = self.root_dir.clone();
         notebook_dir.push(NOTEBOOK_DIR_NAME);
         notebook_dir
     }
 
     fn archive_dir(&self) -> PathBuf {
-        let mut archive_dir = self.rn_root_dir.clone();
+        let mut archive_dir = self.root_dir.clone();
         archive_dir.push(ARCHIVE_DIR_NAME);
         archive_dir
     }
@@ -66,9 +67,9 @@ impl<FS: FileOperations> App<FS> {
     }
 
     fn check_dir_structure(&mut self) -> Result<()> {
-        let rn_root_dir = &self.rn_root_dir;
-        if !self.fs.exists(rn_root_dir) {
-            self.fs.create_dir(rn_root_dir)?;
+        let root_dir = &self.root_dir;
+        if !self.fs.exists(root_dir) {
+            self.fs.create_dir(root_dir)?;
         }
         let active_dir = self.get_dir_path(NoteType::Active);
         if !self.fs.exists(&active_dir) {
@@ -113,13 +114,21 @@ impl<FS: FileOperations> App<FS> {
 
     #[allow(clippy::needless_pass_by_value)]
     fn handle_new(&mut self, args: cli::NewArgs) -> Result<Message> {
-        let name = args.names.into_iter().next().unwrap();
-        let path = self.get_note_path(&name, NoteType::Active);
-        if self.fs.exists(&path) {
-            return Err(AppError::AlreadyExists(name).into());
+        let mut error_context = ErrorContext::new();
+        for name in args.names.into_iter() {
+            let path = self.get_note_path(&name, NoteType::Active);
+            if self.fs.exists(&path) {
+                error_context.add_error(AppError::AlreadyExists(name).into());
+                continue;
+            }
+            if let Err(e) = self.fs.create_file(&path) {
+                error_context.add_error(e);
+            }
         }
-        self.fs.create_file(&path)?;
-        Ok(Message::CreatedNote)
+        if error_context.contains_error() {
+            return Err(error_context.into());
+        }
+        Ok(Message::Empty)
     }
 
     #[allow(clippy::needless_pass_by_value)]
