@@ -19,10 +19,10 @@ impl Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::CreatedNote => {
-                writeln!(f, "Created note")
+                write!(f, "Created note")
             }
             Self::DeletedNote => {
-                writeln!(f, "Deleted note")
+                write!(f, "Deleted note")
             }
             Self::Notebook(notes) | Self::Archive(notes) => {
                 for name in notes {
@@ -30,7 +30,7 @@ impl Display for Message {
                 }
                 Ok(())
             }
-            Self::CompletionScript(script) => writeln!(f, "{script}"),
+            Self::CompletionScript(script) => write!(f, "{script}"),
             Self::ConfigValues(config_values) => {
                 let name_col_width = config_values
                     .iter()
@@ -42,14 +42,14 @@ impl Display for Message {
                 }
                 Ok(())
             }
-            Self::GeneratedConfig(path) => writeln!(f, "Generated config file {}", path.display()),
-            Self::Renamed((original, new)) => writeln!(f, "Renamed note {original} to {new}"),
+            Self::GeneratedConfig(path) => write!(f, "Generated config file {}", path.display()),
+            Self::Renamed((original, new)) => write!(f, "Renamed note {original} to {new}"),
             Self::ArchivedNote((original, archived)) => {
-                writeln!(f, "Archived note {original} to {archived}")
+                write!(f, "Archived note {original} to {archived}")
             }
-            Self::RestoredNote((archived, new)) => writeln!(f, "Restored note {archived} to {new}"),
+            Self::RestoredNote((archived, new)) => write!(f, "Restored note {archived} to {new}"),
             Self::RestoredAndReplacedNote((archived, new)) => {
-                writeln!(f, "Restored note {archived} and replaced {new}")
+                write!(f, "Restored note {archived} and replaced {new}")
             }
             Self::Empty => Ok(()),
         }

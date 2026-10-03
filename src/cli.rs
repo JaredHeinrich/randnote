@@ -105,9 +105,11 @@ pub enum Subcommand {
 
 #[derive(Args, Debug)]
 pub struct NewArgs {
-    #[arg(help = "Name of the note to be created")]
+    #[arg(help = "Name(s) of the note(s) to be created")]
     #[arg(value_parser=valid_note_name)]
-    pub name: String,
+    #[arg(required = true)]
+    #[arg(value_name = "NAME")]
+    pub names: Vec<String>,
 }
 
 #[derive(Args, Debug)]
@@ -336,14 +338,22 @@ mod tests {
 
     #[test]
     fn test_new_multiple_names() {
-        assert!(Cli::try_parse_from(["rn", "new", "a", "b"]).is_err());
+        let cli = Cli::parse_from(["rn", "new", "first", "second", "third"]);
+        let args = unwrap_variant!(cli.subcommand, Subcommand::New);
+        let mut names = args.names.iter();
+        assert_eq!(names.next().unwrap(), "first");
+        assert_eq!(names.next().unwrap(), "second");
+        assert_eq!(names.next().unwrap(), "third");
+        assert_eq!(names.next(), None);
     }
 
     #[test]
     fn test_new() {
         let cli = Cli::parse_from(["rn", "new", "my_note"]);
         let args = unwrap_variant!(cli.subcommand, Subcommand::New);
-        assert_eq!(args.name, "my_note");
+        let mut names = args.names.iter();
+        assert_eq!(names.next().unwrap(), "my_note");
+        assert_eq!(names.next(), None);
     }
 
     #[test]
