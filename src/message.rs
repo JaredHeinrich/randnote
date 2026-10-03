@@ -4,25 +4,46 @@ use std::{fmt::Display, path::PathBuf};
 pub enum Message {
     Notebook(Vec<String>),
     Archive(Vec<String>),
-    CreatedNote,
-    DeletedNote,
+    CreatedNotes(usize),
+    DeletedNotes(usize),
     CompletionScript(String),
     ConfigValues(Vec<(String, String)>),
     GeneratedConfig(PathBuf),
     Renamed((String, String)),
-    ArchivedNote((String, String)),
-    RestoredNote((String, String)),
-    RestoredAndReplacedNote((String, String)),
+    ArchivedNotes(usize),
+    RestoredNotes(usize),
     Empty,
 }
 impl Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::CreatedNote => {
-                writeln!(f, "Created note")
+            Self::CreatedNotes(count) => {
+                if *count == 1 {
+                    writeln!(f, "Created note")
+                } else {
+                    writeln!(f, "Created {count} notes")
+                }
             }
-            Self::DeletedNote => {
-                writeln!(f, "Deleted note")
+            Self::DeletedNotes(count) => {
+                if *count == 1 {
+                    writeln!(f, "Deleted note")
+                } else {
+                    writeln!(f, "Deleted {count} notes")
+                }
+            }
+            Self::ArchivedNotes(count) => {
+                if *count == 1 {
+                    writeln!(f, "Archived note")
+                } else {
+                    writeln!(f, "Archived {count} notes")
+                }
+            }
+            Self::RestoredNotes(count) => {
+                if *count == 1 {
+                    writeln!(f, "Restored note")
+                } else {
+                    writeln!(f, "Restored {count} notes")
+                }
             }
             Self::Notebook(notes) | Self::Archive(notes) => {
                 for name in notes {
@@ -44,13 +65,6 @@ impl Display for Message {
             }
             Self::GeneratedConfig(path) => writeln!(f, "Generated config file {}", path.display()),
             Self::Renamed((original, new)) => writeln!(f, "Renamed note {original} to {new}"),
-            Self::ArchivedNote((original, archived)) => {
-                writeln!(f, "Archived note {original} to {archived}")
-            }
-            Self::RestoredNote((archived, new)) => writeln!(f, "Restored note {archived} to {new}"),
-            Self::RestoredAndReplacedNote((archived, new)) => {
-                writeln!(f, "Restored note {archived} and replaced {new}")
-            }
             Self::Empty => Ok(()),
         }
     }

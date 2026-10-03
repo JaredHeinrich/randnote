@@ -113,24 +113,41 @@ impl<FS: FileOperations> App<FS> {
 
     #[allow(clippy::needless_pass_by_value)]
     fn handle_new(&mut self, args: cli::NewArgs) -> Result<Message> {
-        let name = args.name;
-        let path = self.get_note_path(&name, NoteType::Active);
-        if self.fs.exists(&path) {
-            return Err(AppError::AlreadyExists(name).into());
+        for name in &args.names {
+            let path = self.get_note_path(name, NoteType::Active);
+            if self.fs.exists(&path) {
+                return Err(AppError::AlreadyExists(name.clone()).into());
+            }
         }
-        self.fs.create_file(&path)?;
-        Ok(Message::CreatedNote)
+        let count = args.names.len();
+        for name in &args.names {
+            let path = self.get_note_path(name, NoteType::Active);
+            self.fs.create_file(&path)?;
+        }
+        Ok(Message::CreatedNotes(count))
     }
 
     #[allow(clippy::needless_pass_by_value)]
     fn handle_remove(&mut self, args: cli::RemoveArgs) -> Result<Message> {
-        let name = args.name;
-        let path = self.get_note_path(&name, NoteType::Active);
-        if !self.fs.exists(&path) {
-            return Err(AppError::NotFound(name).into());
+        let mut errors: Vec<String> = Vec::new();
+        let mut succeeded = 0usize;
+        for name in &args.names {
+            let path = self.get_note_path(name, NoteType::Active);
+            if !self.fs.exists(&path) {
+                errors.push(format!("{}", AppError::NotFound(name.clone())));
+            } else {
+                if let Err(e) = self.fs.delete_file(&path) {
+                    errors.push(format!("{e}"));
+                } else {
+                    succeeded += 1;
+                }
+            }
         }
-        self.fs.delete_file(&path)?;
-        Ok(Message::DeletedNote)
+        if errors.is_empty() {
+            Ok(Message::DeletedNotes(succeeded))
+        } else {
+            Err(AppError::PartialFailure { succeeded, errors }.into())
+        }
     }
 
     fn handle_list(&self) -> Result<Message> {
@@ -211,19 +228,32 @@ impl<FS: FileOperations> App<FS> {
     }
 
     fn handle_archive_save(&mut self, args: cli::ArchiveSaveArgs) -> Result<Message> {
-        let name = args.name;
-        let active_path = self.get_note_path(name.as_str(), NoteType::Active);
-        if !self.fs.exists(&active_path) {
-            return Err(AppError::NotFound(name).into());
+        let mut errors: Vec<String> = Vec::new();
+        let mut succeeded = 0usize;
+        for name in &args.names {
+            let active_path = self.get_note_path(name, NoteType::Active);
+            if !self.fs.exists(&active_path) {
+                errors.push(format!("{}", AppError::NotFound(name.clone())));
+                continue;
+            }
+            let time_stamp = Local::now().format("%d-%m-%Y-%H:%M:%S").to_string();
+            let archived_name = format!("{name}_{time_stamp}");
+            let archived_path = self.get_note_path(&archived_name, NoteType::Archived);
+            if self.fs.exists(&archived_path) {
+                errors.push(format!("{}", AppError::ArchiveAlreadyExists(archived_name)));
+                continue;
+            }
+            if let Err(e) = self.fs.rename_file(&active_path, &archived_path) {
+                errors.push(format!("{e}"));
+            } else {
+                succeeded += 1;
+            }
         }
-        let time_stamp = Local::now().format("%d-%m-%Y-%H:%M:%S").to_string();
-        let archived_name = format!("{name}_{time_stamp}");
-        let archived_path = self.get_note_path(&archived_name, NoteType::Archived);
-        if self.fs.exists(&archived_path) {
-            return Err(AppError::ArchiveAlreadyExists(archived_name).into());
+        if errors.is_empty() {
+            Ok(Message::ArchivedNotes(succeeded))
+        } else {
+            Err(AppError::PartialFailure { succeeded, errors }.into())
         }
-        self.fs.rename_file(&active_path, &archived_path)?;
-        Ok(Message::ArchivedNote((name, archived_name)))
     }
 
     fn handle_archive_list(&self) -> Result<Message> {
@@ -239,38 +269,62 @@ impl<FS: FileOperations> App<FS> {
     }
 
     fn handle_archive_restore(&mut self, args: cli::ArchiveRestoreArgs) -> Result<Message> {
-        let new_name = args.new_name.unwrap_or_else(|| {
-            match args.archive_name.rsplit_once('_') {
-                Some((name, _time_stamp)) => name,
-                None => args.archive_name.as_str(),
-            }
-            .to_owned()
-        });
-        let path = self.get_note_path(new_name.as_str(), NoteType::Active);
-        let name_taken = self.fs.exists(&path);
-        if name_taken && !args.force {
-            return Err(AppError::RestoreAlreadyExists(new_name).into());
+        if args.new_name.is_some() && args.archive_names.len() > 1 {
+            return Err(AppError::NewNameRequiresSingleTarget.into());
         }
-        let archived_path = self.get_note_path(args.archive_name.as_str(), NoteType::Archived);
-        self.fs.copy_file(&archived_path, &path)?;
-        if name_taken {
-            Ok(Message::RestoredAndReplacedNote((
-                args.archive_name,
-                new_name,
-            )))
+        let mut errors: Vec<String> = Vec::new();
+        let mut succeeded = 0usize;
+        for archive_name in &args.archive_names {
+            let new_name = args.new_name.clone().unwrap_or_else(|| {
+                match archive_name.rsplit_once('_') {
+                    Some((name, _time_stamp)) => name,
+                    None => archive_name.as_str(),
+                }
+                .to_owned()
+            });
+            let path = self.get_note_path(&new_name, NoteType::Active);
+            let name_taken = self.fs.exists(&path);
+            if name_taken && !args.force {
+                errors.push(format!(
+                    "{}",
+                    AppError::RestoreAlreadyExists(new_name.clone())
+                ));
+                continue;
+            }
+            let archived_path = self.get_note_path(archive_name, NoteType::Archived);
+            if let Err(e) = self.fs.copy_file(&archived_path, &path) {
+                errors.push(format!("{e}"));
+            } else {
+                succeeded += 1;
+            }
+        }
+        if errors.is_empty() {
+            Ok(Message::RestoredNotes(succeeded))
         } else {
-            Ok(Message::RestoredNote((args.archive_name, new_name)))
+            Err(AppError::PartialFailure { succeeded, errors }.into())
         }
     }
 
     fn handle_archive_remove(&mut self, args: cli::ArchiveRemoveArgs) -> Result<Message> {
-        let name = args.name;
-        let path = self.get_note_path(name.as_str(), NoteType::Archived);
-        if !self.fs.exists(&path) {
-            return Err(AppError::NotFound(name).into());
+        let mut errors: Vec<String> = Vec::new();
+        let mut succeeded = 0usize;
+        for name in &args.names {
+            let path = self.get_note_path(name, NoteType::Archived);
+            if !self.fs.exists(&path) {
+                errors.push(format!("{}", AppError::NotFound(name.clone())));
+            } else {
+                if let Err(e) = self.fs.delete_file(&path) {
+                    errors.push(format!("{e}"));
+                } else {
+                    succeeded += 1;
+                }
+            }
         }
-        self.fs.delete_file(&path)?;
-        Ok(Message::DeletedNote)
+        if errors.is_empty() {
+            Ok(Message::DeletedNotes(succeeded))
+        } else {
+            Err(AppError::PartialFailure { succeeded, errors }.into())
+        }
     }
 
     fn handle_archive(&mut self, args: cli::ArchiveArgs) -> Result<Message> {

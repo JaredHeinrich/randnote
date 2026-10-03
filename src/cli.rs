@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::path::{Component, Path};
 
-use clap::Subcommand as ClapSubcommand;
+use clap::{FromArgMatches, Subcommand as ClapSubcommand};
 use clap::{Args, Parser, ValueEnum};
 use thiserror::Error;
 
@@ -105,9 +105,11 @@ pub enum Subcommand {
 
 #[derive(Args, Debug)]
 pub struct NewArgs {
-    #[arg(help = "Name of the note to be created")]
-    #[arg(value_parser=valid_note_name)]
-    pub name: String,
+    #[arg(help = "Name(s) of the note(s) to be created")]
+    #[arg(value_name = "NAME")]
+    #[arg(value_parser = valid_note_name)]
+    #[arg(required = true)]
+    pub names: Vec<String>,
 }
 
 #[derive(Args, Debug)]
@@ -127,9 +129,11 @@ pub struct OpenArgs {
 
 #[derive(Args, Debug)]
 pub struct RemoveArgs {
-    #[arg(help = "Name of the note to be deleted")]
-    #[arg(value_parser=valid_note_name)]
-    pub name: String,
+    #[arg(help = "Name(s) of the note(s) to be deleted")]
+    #[arg(value_name = "NAME")]
+    #[arg(value_parser = valid_note_name)]
+    #[arg(required = true)]
+    pub names: Vec<String>,
 }
 
 #[derive(Args, Debug)]
@@ -221,9 +225,11 @@ pub enum ArchiveSubcommand {
 
 #[derive(Args, Debug)]
 pub struct ArchiveSaveArgs {
-    #[arg(help = "Name of the note to archive")]
-    #[arg(value_parser=valid_note_name)]
-    pub name: String,
+    #[arg(help = "Name(s) of the note(s) to archive")]
+    #[arg(value_name = "NAME")]
+    #[arg(value_parser = valid_note_name)]
+    #[arg(required = true)]
+    pub names: Vec<String>,
 }
 
 #[derive(Args, Debug)]
@@ -239,9 +245,11 @@ pub struct ArchiveOpenArgs {
 
 #[derive(Args, Debug)]
 pub struct ArchiveRestoreArgs {
-    #[arg(help = "Name of the note to restore from archive")]
-    #[arg(value_parser=valid_note_name)]
-    pub archive_name: String,
+    #[arg(help = "Name(s) of the note(s) to restore from archive")]
+    #[arg(value_name = "NAME")]
+    #[arg(value_parser = valid_note_name)]
+    #[arg(required = true)]
+    pub archive_names: Vec<String>,
 
     #[arg(help = "New name of the note after its restored")]
     #[arg(short, long)]
@@ -255,9 +263,11 @@ pub struct ArchiveRestoreArgs {
 
 #[derive(Args, Debug)]
 pub struct ArchiveRemoveArgs {
-    #[arg(help = "Name of the note to delete from archive")]
-    #[arg(value_parser=valid_note_name)]
-    pub name: String,
+    #[arg(help = "Name(s) of the note(s) to delete from archive")]
+    #[arg(value_name = "NAME")]
+    #[arg(value_parser = valid_note_name)]
+    #[arg(required = true)]
+    pub names: Vec<String>,
 }
 
 #[cfg(test)]
@@ -336,14 +346,16 @@ mod tests {
 
     #[test]
     fn test_new_multiple_names() {
-        assert!(Cli::try_parse_from(["rn", "new", "a", "b"]).is_err());
+        let cli = Cli::parse_from(["rn", "new", "a", "b"]);
+        let args = unwrap_variant!(cli.subcommand, Subcommand::New);
+        assert_eq!(args.names, ["a", "b"]);
     }
 
     #[test]
     fn test_new() {
         let cli = Cli::parse_from(["rn", "new", "my_note"]);
         let args = unwrap_variant!(cli.subcommand, Subcommand::New);
-        assert_eq!(args.name, "my_note");
+        assert_eq!(args.names, ["my_note"]);
     }
 
     #[test]
@@ -400,21 +412,23 @@ mod tests {
 
     #[test]
     fn test_remove_multiple_names() {
-        assert!(Cli::try_parse_from(["rn", "remove", "a", "b"]).is_err());
+        let cli = Cli::parse_from(["rn", "remove", "a", "b"]);
+        let args = unwrap_variant!(cli.subcommand, Subcommand::Remove);
+        assert_eq!(args.names, ["a", "b"]);
     }
 
     #[test]
     fn test_remove() {
         let cli = Cli::parse_from(["rn", "remove", "my_note"]);
         let args = unwrap_variant!(cli.subcommand, Subcommand::Remove);
-        assert_eq!(&args.name, "my_note");
+        assert_eq!(args.names, ["my_note"]);
     }
 
     #[test]
     fn test_remove_alias() {
         let cli = Cli::parse_from(["rn", "rm", "my_note"]);
         let args = unwrap_variant!(cli.subcommand, Subcommand::Remove);
-        assert_eq!(&args.name, "my_note");
+        assert_eq!(args.names, ["my_note"]);
     }
 
     #[test]
@@ -566,7 +580,10 @@ mod tests {
 
     #[test]
     fn test_archive_save_multiple_names() {
-        assert!(Cli::try_parse_from(["rn", "archive", "save", "note_1", "note_2"]).is_err());
+        let cli = Cli::parse_from(["rn", "archive", "save", "note_1", "note_2"]);
+        let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
+        let save_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Save);
+        assert_eq!(save_args.names, ["note_1", "note_2"]);
     }
 
     #[test]
@@ -574,7 +591,7 @@ mod tests {
         let cli = Cli::parse_from(["rn", "archive", "save", "note_1"]);
         let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
         let save_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Save);
-        assert_eq!(save_args.name, "note_1");
+        assert_eq!(save_args.names, ["note_1"]);
     }
 
     #[test]
@@ -638,7 +655,10 @@ mod tests {
 
     #[test]
     fn test_archive_restore_multiple_names() {
-        assert!(Cli::try_parse_from(["rn", "archive", "restore", "note_1", "note_2"]).is_err());
+        let cli = Cli::parse_from(["rn", "archive", "restore", "note_1", "note_2"]);
+        let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
+        let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
+        assert_eq!(restore_args.archive_names, ["note_1", "note_2"]);
     }
 
     #[test]
@@ -646,7 +666,7 @@ mod tests {
         let cli = Cli::parse_from(["rn", "archive", "restore", "note_1"]);
         let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
         let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
-        assert_eq!(restore_args.archive_name, "note_1");
+        assert_eq!(restore_args.archive_names, ["note_1"]);
         assert_eq!(restore_args.new_name, None);
         assert!(!restore_args.force);
     }
@@ -656,7 +676,7 @@ mod tests {
         let cli = Cli::parse_from(["rn", "archive", "restore", "note_1", "--new-name", "note"]);
         let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
         let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
-        assert_eq!(restore_args.archive_name, "note_1");
+        assert_eq!(restore_args.archive_names, ["note_1"]);
         assert_eq!(restore_args.new_name.unwrap(), "note");
         assert!(!restore_args.force);
     }
@@ -666,7 +686,7 @@ mod tests {
         let cli = Cli::parse_from(["rn", "archive", "restore", "note_1", "--force"]);
         let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
         let restore_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Restore);
-        assert_eq!(restore_args.archive_name, "note_1");
+        assert_eq!(restore_args.archive_names, ["note_1"]);
         assert_eq!(restore_args.new_name, None);
         assert!(restore_args.force);
     }
@@ -678,7 +698,10 @@ mod tests {
 
     #[test]
     fn test_archive_remove_multiple_names() {
-        assert!(Cli::try_parse_from(["rn", "archive", "remove", "note_1", "note_2"]).is_err());
+        let cli = Cli::parse_from(["rn", "archive", "remove", "note_1", "note_2"]);
+        let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
+        let remove_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Remove);
+        assert_eq!(remove_args.names, ["note_1", "note_2"]);
     }
 
     #[test]
@@ -686,6 +709,6 @@ mod tests {
         let cli = Cli::parse_from(["rn", "archive", "remove", "note_1"]);
         let archive_args = unwrap_variant!(cli.subcommand, Subcommand::Archive);
         let remove_args = unwrap_variant!(archive_args.subcommand, ArchiveSubcommand::Remove);
-        assert_eq!(remove_args.name, "note_1");
+        assert_eq!(remove_args.names, ["note_1"]);
     }
 }

@@ -10,6 +10,8 @@ pub enum AppError {
     RenameAlreadyExists(String),
     RestoreAlreadyExists(String),
     ArchiveAlreadyExists(String),
+    NewNameRequiresSingleTarget,
+    PartialFailure { succeeded: usize, errors: Vec<String> },
 }
 impl Display for AppError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -44,6 +46,17 @@ impl Display for AppError {
                 f,
                 "Archiving failed, because file \"{name}\" already exists."
             ),
+            Self::NewNameRequiresSingleTarget => writeln!(
+                f,
+                "--new-name can only be used with a single archive name."
+            ),
+            Self::PartialFailure { succeeded, errors } => {
+                for error in errors {
+                    write!(f, "{error}")?;
+                }
+                let failed = errors.len();
+                writeln!(f, "{succeeded} operation(s) succeeded, {failed} failed.")
+            }
         }
     }
 }
