@@ -32,7 +32,7 @@ _rn() {
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-':name -- Name of the note to be created:_default' \
+'*::names -- Name(s) of the note(s) to be created:_default' \
 && ret=0
 ;;
 (open)
@@ -50,14 +50,14 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-':name -- Name of the note to be deleted:_default' \
+'*::names -- Name(s) of the note(s) to be deleted:_default' \
 && ret=0
 ;;
 (rm)
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-':name -- Name of the note to be deleted:_default' \
+'*::names -- Name(s) of the note(s) to be deleted:_default' \
 && ret=0
 ;;
 (list)
@@ -153,7 +153,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-':name -- Name of the note to archive:_default' \
+'*::names -- Name(s) of the note(s) to archive:_default' \
 && ret=0
 ;;
 (list)
@@ -185,21 +185,21 @@ _arguments "${_arguments_options[@]}" : \
 '--force[Replace existing note if name is already taken]' \
 '-h[Print help]' \
 '--help[Print help]' \
-':archive_name -- Name of the note to restore from archive:_default' \
+'*::archive_names -- Name(s) of the note(s) to restore from archive:_default' \
 && ret=0
 ;;
 (remove)
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-':name -- Name of the note to delete from archive:_default' \
+'*::names -- Name(s) of the note(s) to delete from archive:_default' \
 && ret=0
 ;;
 (rm)
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-':name -- Name of the note to delete from archive:_default' \
+'*::names -- Name(s) of the note(s) to delete from archive:_default' \
 && ret=0
 ;;
         esac
