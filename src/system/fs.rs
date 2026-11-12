@@ -9,22 +9,35 @@ use crate::system::error::Result;
 /// Returns `Some(true)` if an object exists, `Some(false)` if not and `Err(_)` if existence can
 /// neither be confirmed or denied.
 ///
-/// # Arguments
+/// # Errors
 ///
-/// * `path` - path to check existence for
+/// Forwards errors from [`std::path::Path::try_exists`].
 pub fn exists(path: &Path) -> Result<bool> {
     path.try_exists().map_err(Into::into)
 }
 
+/// Recursively create a directory and all of its parent components if they
+/// are missing.
+///
+/// # Errors
+///
+/// Forwards errors from [`std::fs::create_dir_all`].
 pub fn create_dir(path: &Path) -> Result<()> {
-    fs::create_dir_all(path)?;
-    Ok(())
+    fs::create_dir_all(path).map_err(Into::into)
 }
 
-pub fn list_files(dir: &Path) -> Result<Vec<String>> {
+/// Returns a list of all file names from given directory.
+///
+/// Ignores files if their name starts with a dot.
+///
+/// # Errors
+///
+/// * Forwards errors from [`std::fs::read_dir`] or other issues regarding e.g. permissions.
+/// * If a file name could not be converted to a `String`, because it's not valid UTF-8.
+pub fn list_files(dir_path: &Path) -> Result<Vec<String>> {
     let mut files = Vec::new();
-    let dir = fs::read_dir(dir)?;
-    for entry in dir {
+    let dir_entries = fs::read_dir(dir_path)?;
+    for entry in dir_entries {
         let entry = entry?;
         if !entry.file_type()?.is_file() {
             continue;
@@ -40,43 +53,83 @@ pub fn list_files(dir: &Path) -> Result<Vec<String>> {
     Ok(files)
 }
 
+/// Returns `true` if the path exists on disk and is pointing at a regular file.
+///
+/// If you cannot access the metadata of the file, e.g. because of a
+/// permission error, this will return `false`.
+///
+/// For further information see [`std::path::Path::is_file`].
+#[must_use]
 pub fn is_file(path: &Path) -> bool {
     path.is_file()
 }
 
+/// Delete the file behind given `path` from the filesystem.
+///
+/// # Errors
+///
+/// Forwards errors from [`std::fs::remove_file`].
 pub fn delete_file(path: &Path) -> Result<()> {
-    fs::remove_file(path)?;
-    Ok(())
+    fs::remove_file(path).map_err(Into::into)
 }
 
+/// Creates a new file at given `path`.
+///
+/// # Errors
+///
+/// Forwards errors from [`std::fs::File::create_new`].
 pub fn create_file(path: &Path) -> Result<()> {
-    let _ = File::create_new(path)?;
-    Ok(())
+    File::create_new(path).map(|_| ()).map_err(Into::into)
 }
 
+/// Read file behind given `path` to a `String`.
+///
+/// # Errors
+///
+/// Forwards errors from [`std::fs::read_to_string`].
 pub fn read_file(path: &Path) -> Result<String> {
-    Ok(fs::read_to_string(path)?)
+    fs::read_to_string(path).map_err(Into::into)
 }
 
+/// Write `content` to a file, either overwriting an existing file or creating a new one.
+///
+/// # Errors
+///
+/// * There exists an object behind the given `path`, but its not a file.
+/// * Forwards errors from [`fs::write`].
 pub fn write_file(path: &Path, content: &str) -> Result<()> {
     if exists(path)? && !is_file(path) {
-        return Err(Error::NotAFile(path.to_path_buf()).into());
+        return Err(Error::NotAFile(path.to_path_buf()));
     }
     fs::write(path, content).map_err(Into::into)
 }
 
-pub fn copy_file(source_path: &Path, destination_path: &Path) -> Result<()> {
-    if !is_file(source_path) {
-        return Err(Error::NotAFile(source_path.to_path_buf()).into());
+/// Copy file from `source` to `destination`.
+///
+/// # Errors
+///
+/// * If `source` does not point to a file.
+/// * Forwards errors from [`fs::copy`].
+pub fn copy_file(source: &Path, destination: &Path) -> Result<()> {
+    // TODO maybe should return an error, if `destination` already exists
+    if !is_file(source) {
+        return Err(Error::NotAFile(source.to_path_buf()));
     }
-    fs::copy(source_path, destination_path)
+    fs::copy(source, destination)
         .map(|_| ())
         .map_err(Into::into)
 }
 
-pub fn rename_file(source_path: &Path, destination_path: &Path) -> Result<()> {
-    if !is_file(source_path) {
-        return Err(Error::NotAFile(source_path.to_path_buf()));
+/// Moves file from `source` to `destination`.
+///
+/// # Errors
+///
+/// * If `source` does not point to a file.
+/// * Forwards errors from [`fs::rename`].
+pub fn move_file(source: &Path, destination: &Path) -> Result<()> {
+    // TODO maybe should return an error, if `destination` already exists
+    if !is_file(source) {
+        return Err(Error::NotAFile(source.to_path_buf()));
     }
-    fs::rename(source_path, destination_path).map_err(Into::into)
+    fs::rename(source, destination).map_err(Into::into)
 }

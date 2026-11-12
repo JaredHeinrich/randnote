@@ -18,7 +18,7 @@ use custom_parser::valid_note_name;
 #[command(flatten_help = true)]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Command,
+    pub subcommand: Command,
 }
 
 #[derive(Subcommand, Debug)]

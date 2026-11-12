@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use chrono::Local;
 
-use crate::config::{Config, PartialConfig};
+use crate::config::{get_values_from_file, Config};
 use crate::core::error::Error;
 use crate::core::error::Result;
 use crate::message::Message;
@@ -16,55 +16,90 @@ use crate::system::shell_command;
 const NOTEBOOK_DIR_NAME: &str = "notebook";
 const ARCHIVE_DIR_NAME: &str = "archive";
 
+/// Different states a note can be in.
 #[derive(Clone, Copy)]
-enum NoteType {
+enum NoteState {
+    /// `Active` notes are in the notebook and can be directly accessed.
     Active,
+    /// `Archived` notes are in the archive and can only be accessed with the `archive` subcommand.
     Archived,
 }
 
-fn notebook_dir(config: &Config) -> PathBuf {
+/// Get path to the notebook directory, where active notes are stored.
+fn notebook_path(config: &Config) -> PathBuf {
     let mut notebook_dir = config.root_dir.clone();
     notebook_dir.push(NOTEBOOK_DIR_NAME);
     notebook_dir
 }
 
-fn archive_dir(config: &Config) -> PathBuf {
+/// Get path to the archive directory, where archived notes are stored.
+fn archive_path(config: &Config) -> PathBuf {
     let mut archive_dir = config.root_dir.clone();
     archive_dir.push(ARCHIVE_DIR_NAME);
     archive_dir
 }
 
-fn get_dir_path(config: &Config, note_type: NoteType) -> PathBuf {
-    match note_type {
-        NoteType::Active => notebook_dir(config),
-        NoteType::Archived => archive_dir(config),
+/// Get the path for the directory for notes of specific `state`.
+fn dir_path(config: &Config, state: NoteState) -> PathBuf {
+    match state {
+        NoteState::Active => notebook_path(config),
+        NoteState::Archived => archive_path(config),
     }
 }
 
-fn get_note_path(config: &Config, name: &str, note_type: NoteType) -> PathBuf {
-    let mut path = get_dir_path(config, note_type);
+/// Get the path of a note with specific `name` and `state`.
+fn note_path(config: &Config, name: &str, state: NoteState) -> PathBuf {
+    let mut path = dir_path(config, state);
     path.push(name);
     path
 }
 
+/// Get the path of an active note with specific `name`.
+fn active_note_path(config: &Config, name: &str) -> PathBuf {
+    let mut path = notebook_path(config);
+    path.push(name);
+    path
+}
+
+/// Get the path of an archived note with specific `name`.
+fn archived_note_path(config: &Config, name: &str) -> PathBuf {
+    let mut path = archive_path(config);
+    path.push(name);
+    path
+}
+
+/// Ensures that expected directories are present.
+///
+/// * `root_dir` directory used for all application data except config.
+/// * `notebook` directory inside root to store active notes.
+/// * `archive` directory inside root to store archived notes.
+///
+/// # Errors
+///
+/// Forwards errors that may occur when checking or creating directories.
 fn check_dir_structure(config: &Config) -> Result<()> {
-    let rn_root_dir = &config.root_dir;
-    if !fs::exists(rn_root_dir)? {
-        fs::create_dir(rn_root_dir)?;
+    if !fs::exists(&config.root_dir)? {
+        fs::create_dir(&config.root_dir)?;
     }
-    let active_dir = get_dir_path(config, NoteType::Active);
-    if !fs::exists(&active_dir)? {
-        fs::create_dir(&active_dir)?;
+    let notebook_path = notebook_path(config);
+    if !fs::exists(&notebook_path)? {
+        fs::create_dir(&notebook_path)?;
     }
-    let archive_dir = get_dir_path(config, NoteType::Archived);
-    if !fs::exists(&archive_dir)? {
-        fs::create_dir(&archive_dir)?;
+    let archive_path = archive_path(config);
+    if !fs::exists(&archive_path)? {
+        fs::create_dir(&archive_path)?;
     }
     Ok(())
 }
 
-fn open_note(config: &Config, name: String, note_type: NoteType) -> Result<()> {
-    let path = get_note_path(config, name.as_str(), note_type);
+/// Open a note with specific `name` and `state` using editor from `config`.
+///
+/// # Errors
+///
+/// * Note with given `name` and `state` does not exist.
+/// * [`shell_command::open_file`] fails.
+fn open_note(config: &Config, name: String, state: NoteState) -> Result<()> {
+    let path = note_path(config, name.as_str(), state);
     if !fs::exists(&path)? {
         return Err(Error::NotFound(name));
     }
@@ -75,7 +110,7 @@ fn open_note(config: &Config, name: String, note_type: NoteType) -> Result<()> {
 #[allow(clippy::needless_pass_by_value)]
 fn handle_new(config: &Config, args: cli::NewArgs) -> Result<Message> {
     let name = args.name;
-    let path = get_note_path(config, &name, NoteType::Active);
+    let path = active_note_path(config, &name);
     if fs::exists(&path)? {
         return Err(Error::AlreadyExists(name));
     }
@@ -86,7 +121,7 @@ fn handle_new(config: &Config, args: cli::NewArgs) -> Result<Message> {
 #[allow(clippy::needless_pass_by_value)]
 fn handle_remove(config: &Config, args: cli::RemoveArgs) -> Result<Message> {
     let name = args.name;
-    let path = get_note_path(config, &name, NoteType::Active);
+    let path = active_note_path(config, &name);
     if !fs::exists(&path)? {
         return Err(Error::NotFound(name));
     }
@@ -95,7 +130,7 @@ fn handle_remove(config: &Config, args: cli::RemoveArgs) -> Result<Message> {
 }
 
 fn handle_list(config: &Config) -> Result<Message> {
-    let notes = fs::list_files(&get_dir_path(config, NoteType::Active))?;
+    let notes = fs::list_files(&notebook_path(config))?;
     Ok(Message::Notebook(notes))
 }
 
@@ -104,11 +139,11 @@ fn handle_open(config: &Config, args: cli::OpenArgs) -> Result<Message> {
     if let Some(editor) = args.editor {
         config.editor = editor;
     }
-    let path = get_note_path(&config, &args.name, NoteType::Active);
+    let path = active_note_path(&config, &args.name);
     if args.new && !fs::exists(&path)? {
         fs::create_file(&path)?;
     }
-    open_note(&config, args.name, NoteType::Active)?;
+    open_note(&config, args.name, NoteState::Active)?;
     Ok(Message::Empty)
 }
 
@@ -135,7 +170,7 @@ fn handle_config_generate(args: cli::ConfigGenerateArgs) -> Result<Message> {
     if config_exists && !args.force {
         return Err(Error::ConfigAlreadyExists(config_file_path));
     }
-    let config = PartialConfig::default();
+    let config = Config::default()?;
     let config_string = config.to_toml()?;
     #[allow(clippy::unwrap_used)] // `config_file_path` is never empty
     let dir_path = config_file_path.parent().unwrap();
@@ -146,50 +181,50 @@ fn handle_config_generate(args: cli::ConfigGenerateArgs) -> Result<Message> {
 
 #[allow(clippy::needless_pass_by_value)]
 fn handle_config_get(args: cli::ConfigGetArgs) -> Result<Message> {
-    Ok(Message::ConfigValues(PartialConfig::get_values_from_file(
+    Ok(Message::ConfigValues(get_values_from_file(
         &args.value_names,
     )?))
 }
 
 fn handle_config_list() -> Result<Message> {
-    Ok(Message::ConfigValues(PartialConfig::get_values_from_file(
+    Ok(Message::ConfigValues(get_values_from_file(
         &config::value_names::ALL,
     )?))
 }
 
 fn handle_rename(config: &Config, args: cli::RenameArgs) -> Result<Message> {
     let name = args.name;
-    let path = get_note_path(config, &name, NoteType::Active);
+    let path = active_note_path(config, &name);
     let new_name = args.new_name;
-    let new_path = get_note_path(config, &new_name, NoteType::Active);
+    let new_path = active_note_path(config, &new_name);
     if !fs::exists(&path)? {
         return Err(Error::NotFound(name));
     }
     if !args.force && fs::exists(&new_path)? {
         return Err(Error::RenameAlreadyExists(new_name));
     }
-    fs::rename_file(&path, &new_path)?;
+    fs::move_file(&path, &new_path)?;
     Ok(Message::Renamed((name, new_name)))
 }
 
 fn handle_archive_save(config: &Config, args: cli::ArchiveSaveArgs) -> Result<Message> {
     let name = args.name;
-    let active_path = get_note_path(config, name.as_str(), NoteType::Active);
+    let active_path = active_note_path(config, name.as_str());
     if !fs::exists(&active_path)? {
         return Err(Error::NotFound(name));
     }
     let time_stamp = Local::now().format("%d-%m-%Y-%H:%M:%S").to_string();
     let archived_name = format!("{name}_{time_stamp}");
-    let archived_path = get_note_path(config, &archived_name, NoteType::Archived);
+    let archived_path = archived_note_path(config, &archived_name);
     if fs::exists(&archived_path)? {
         return Err(Error::ArchiveAlreadyExists(archived_name));
     }
-    fs::rename_file(&active_path, &archived_path)?;
+    fs::move_file(&active_path, &archived_path)?;
     Ok(Message::ArchivedNote((name, archived_name)))
 }
 
 fn handle_archive_list(config: &Config) -> Result<Message> {
-    let archived_notes = fs::list_files(&get_dir_path(config, NoteType::Archived))?;
+    let archived_notes = fs::list_files(&archive_path(config))?;
     Ok(Message::Archive(archived_notes))
 }
 
@@ -198,7 +233,7 @@ fn handle_archive_open(config: &Config, args: cli::ArchiveOpenArgs) -> Result<Me
     if let Some(editor) = args.editor {
         config.editor = editor;
     }
-    open_note(&config, args.name, NoteType::Archived)?;
+    open_note(&config, args.name, NoteState::Archived)?;
     Ok(Message::Empty)
 }
 
@@ -210,12 +245,12 @@ fn handle_archive_restore(config: &Config, args: cli::ArchiveRestoreArgs) -> Res
         }
         .to_owned()
     });
-    let path = get_note_path(config, new_name.as_str(), NoteType::Active);
+    let path = active_note_path(config, new_name.as_str());
     let name_taken = fs::exists(&path)?;
     if name_taken && !args.force {
         return Err(Error::RestoreAlreadyExists(new_name));
     }
-    let archived_path = get_note_path(config, args.archive_name.as_str(), NoteType::Archived);
+    let archived_path = archived_note_path(config, args.archive_name.as_str());
     fs::copy_file(&archived_path, &path)?;
     if name_taken {
         Ok(Message::RestoredAndReplacedNote((
@@ -229,7 +264,7 @@ fn handle_archive_restore(config: &Config, args: cli::ArchiveRestoreArgs) -> Res
 
 fn handle_archive_remove(config: &Config, args: cli::ArchiveRemoveArgs) -> Result<Message> {
     let name = args.name;
-    let path = get_note_path(config, name.as_str(), NoteType::Archived);
+    let path = active_note_path(config, name.as_str());
     if !fs::exists(&path)? {
         return Err(Error::NotFound(name));
     }
@@ -247,9 +282,19 @@ fn handle_archive(config: &Config, args: cli::ArchiveArgs) -> Result<Message> {
     }
 }
 
+/// Handle a specific command received from the command line.
+///
+/// # Arguments
+///
+/// * `config` - config used to execute the command.
+/// * `command` - cli command to execute
+///
+/// # Errors
+///
+/// Forwards errors from handlers for specific subcommands.
 pub fn handle_command(config: &Config, command: cli::Cli) -> Result<Message> {
     check_dir_structure(config)?;
-    match command.command {
+    match command.subcommand {
         cli::Command::New(args) => handle_new(config, args),
         cli::Command::Open(args) => handle_open(config, args),
         cli::Command::Remove(args) => handle_remove(config, args),

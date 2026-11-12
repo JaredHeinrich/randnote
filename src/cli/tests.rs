@@ -1,9 +1,9 @@
 #![allow(clippy::panic)] // tests
 #![allow(clippy::unwrap_used)] // tests
 
-use super::*;
 use super::custom_parser::*;
 use super::error::*;
+use super::*;
 use clap::Parser;
 use core::panic;
 
@@ -46,15 +46,16 @@ fn test_valid_note_name() {
 }
 
 #[test]
-fn test_rn_no_subcommand() {
+fn test_rn_no_command() {
     assert!(Cli::try_parse_from(["rn"]).is_err());
+    assert!(Cli::try_parse_from(["rn", " "]).is_err());
 }
 
 #[test]
-fn test_rn_invalid_subcommand() {
-    assert!(Cli::try_parse_from(["rn", " "]).is_err());
+fn test_rn_invalid_command() {
     assert!(Cli::try_parse_from(["rn", "test"]).is_err());
 }
+
 #[test]
 fn test_rn_invalid_arguments() {
     assert!(Cli::try_parse_from(["rn", "-t"]).is_err());
